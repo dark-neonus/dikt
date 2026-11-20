@@ -55,7 +55,7 @@ fn creates_collection_skills_and_instruction_blocks() {
     );
     assert_eq!(
         discover_root(&root.join(".claude/skills")).unwrap(),
-        root.canonicalize().unwrap().join("dikt")
+        dunce::canonicalize(root).unwrap().join("dikt")
     );
 }
 

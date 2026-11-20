@@ -306,9 +306,17 @@ pub fn atomic_write(path: &Path, text: &str) -> Result<()> {
     Ok(())
 }
 
+/// Join a `/`-separated relative path one component at a time (portable on Windows).
+pub fn join_relative(base: &Path, relative: &str) -> PathBuf {
+    relative
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .fold(base.to_path_buf(), |path, part| path.join(part))
+}
+
 /// Resolve symlinks for the existing part of a path, keeping the nonexistent remainder.
 fn resolve(path: &Path) -> PathBuf {
-    if let Ok(resolved) = path.canonicalize() {
+    if let Ok(resolved) = dunce::canonicalize(path) {
         return resolved;
     }
     match (path.parent(), path.file_name()) {
@@ -360,8 +368,7 @@ pub struct Store {
 
 impl Store {
     pub fn new(root: &Path) -> Result<Self> {
-        let root = root
-            .canonicalize()
+        let root = dunce::canonicalize(root)
             .map_err(|error| Error(format!("{}: {error}", root.display())))?;
         Ok(Store {
             root,
@@ -387,7 +394,7 @@ impl Store {
     }
 
     pub fn safe_path(&self, relative: &str) -> Result<PathBuf> {
-        let path = self.root.join(relative);
+        let path = join_relative(&self.root, relative);
         if Path::new(relative)
             .components()
             .any(|part| !matches!(part, Component::Normal(_)))

@@ -12,7 +12,7 @@ use clap::ValueEnum;
 
 use crate::bail;
 use crate::error::{Error, Result};
-use crate::store::{DEFAULT_COLLECTION, Store, atomic_write};
+use crate::store::{DEFAULT_COLLECTION, Store, atomic_write, join_relative};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Agent {
@@ -134,8 +134,8 @@ fn render(template: &str, command: &str, up: &str) -> String {
 fn detect_command(project: &Path) -> String {
     let in_project_venv = std::env::current_exe()
         .ok()
-        .and_then(|exe| exe.canonicalize().ok())
-        .zip(project.join(".venv").canonicalize().ok())
+        .and_then(|exe| dunce::canonicalize(exe).ok())
+        .zip(dunce::canonicalize(project.join(".venv")).ok())
         .is_some_and(|(exe, venv)| exe.starts_with(venv));
     if in_project_venv {
         "uv run dikt".into()
@@ -237,8 +237,7 @@ pub fn init(
     refresh: bool,
     command: Option<&str>,
 ) -> Result<String> {
-    let project = project
-        .canonicalize()
+    let project = dunce::canonicalize(project)
         .map_err(|error| Error(format!("{}: {error}", project.display())))?;
     if !project.is_dir() {
         bail!("Not a directory: {}", project.display());
@@ -258,13 +257,13 @@ pub fn init(
 
     for (relative, content, owner) in COLLECTION {
         installer.file(
-            collection.join(relative),
+            join_relative(&collection, relative),
             &render(content, &command, ""),
             owner,
         )?;
     }
     for relative in DIRECTORIES {
-        let directory = collection.join(relative);
+        let directory = join_relative(&collection, relative);
         fs::create_dir_all(&directory)?;
         let empty = fs::read_dir(&directory)?.next().is_none();
         if empty && relative != "reports" {
@@ -284,7 +283,7 @@ pub fn init(
     for root in &skill_roots {
         for (name, content) in SKILLS {
             installer.file(
-                project.join(root).join(name).join("SKILL.md"),
+                join_relative(&project, root).join(name).join("SKILL.md"),
                 &render(content, &command, "../../../"),
                 Owner::Managed,
             )?;
@@ -293,7 +292,7 @@ pub fn init(
     if agents.contains(&Agent::Copilot) {
         for (name, content) in PROMPTS {
             installer.file(
-                project.join(".github/prompts").join(name),
+                join_relative(&project, ".github/prompts").join(name),
                 &render(content, &command, ""),
                 Owner::Managed,
             )?;

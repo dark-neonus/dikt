@@ -22,7 +22,7 @@ impl Cli {
             "tags: [pm, cli]\nbroad_tags: [pm]\n",
         )
         .unwrap();
-        let root = dir.path().canonicalize().unwrap();
+        let root = dunce::canonicalize(dir.path()).unwrap();
         Cli { _dir: dir, root }
     }
 

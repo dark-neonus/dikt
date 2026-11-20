@@ -13,24 +13,41 @@ It is a Rust port of the DIKT blueprint's Python implementation. The behaviour
 and the blueprint's 47 regression scenarios are preserved (see
 [Differences from the blueprint](#differences-from-the-blueprint)).
 
+**→ Full guide: [docs/TUTORIAL.md](docs/TUTORIAL.md)**
+
 ## Install into a project (uv)
 
-The package is built with [maturin](https://www.maturin.rs/) as a binary-only
-wheel, so uv installs the compiled `dikt` executable into the project's
-virtual environment. Building from source needs a Rust toolchain (≥ 1.88).
+Prebuilt wheels for Linux, macOS and Windows are attached to every
+[GitHub release](https://github.com/dark-neonus/dikt/releases), so no Rust
+toolchain is needed. Add the release as a pinned package source in your
+project's `pyproject.toml`:
+
+```toml
+[[tool.uv.index]]
+name = "dikt"
+url = "https://github.com/dark-neonus/dikt/releases/expanded_assets/v0.1.0"
+format = "flat"
+explicit = true
+
+[tool.uv.sources]
+dikt-cli = { index = "dikt" }
+```
 
 ```sh
-cd my-project
-uv init                                   # if the project has no pyproject.toml yet
-uv add --dev git+https://<host>/<you>/dikt  # or: uv add --dev /path/to/dikt
+uv add --dev dikt-cli
 uv run dikt init                          # create dikt/ + agent skills and instructions
 uv run dikt add task --title "Try DIKT" --tag dikt
 ```
 
-Other options:
+> The Python distribution is **`dikt-cli`**. The PyPI package named `dikt` is
+> an unrelated project, so don't `uv add dikt`. The installed command is `dikt`.
 
-- `uv tool install /path/to/dikt` installs `dikt` globally, so it works in any directory.
-- `cargo install --path /path/to/dikt` does the same through Cargo.
+Other ways to install (details in the [tutorial](docs/TUTORIAL.md#install)):
+
+- From source (needs Rust ≥ 1.88): `uv add --dev "dikt-cli @ git+https://github.com/dark-neonus/dikt"`
+- As a global tool: `uv tool install dikt-cli --find-links https://github.com/dark-neonus/dikt/releases/expanded_assets/v0.1.0`
+- As a standalone binary: download `dikt-<version>-<target>.tar.gz`/`.zip` from the releases page
+- With Cargo: `cargo install --git https://github.com/dark-neonus/dikt`
 
 `dikt init` writes `uv run dikt` into the generated docs when the binary lives
 in the project's `.venv`, and plain `dikt` otherwise. Override with `--command`.
@@ -82,6 +99,13 @@ cargo test                 # unit + ported blueprint regression tests
 cargo clippy --all-targets
 uv build                   # binary wheel + sdist via maturin
 ```
+
+Releasing: bump `version` in `Cargo.toml`, commit, then tag and push
+(`git tag v0.2.0 && git push origin v0.2.0`). The `Release` workflow runs the
+tests, builds wheels (Linux glibc x86_64/aarch64, Linux musl x86_64, macOS
+x86_64/arm64, Windows x86_64), an sdist and standalone binaries, and publishes them with
+`SHA256SUMS` as a GitHub release. Then update the `v0.1.0` URLs in this
+README and the tutorial.
 
 Layout:
 

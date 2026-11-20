@@ -1,0 +1,113 @@
+name: Release
+
+# Push a tag like v0.1.0 to build wheels, an sdist and standalone binaries,
+# then publish them as a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  wheels:
+    name: wheel (${{ matrix.label }})
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: linux-x86_64, os: ubuntu-latest, target: x86_64, manylinux: "2_17" }
+          - { label: linux-aarch64, os: ubuntu-latest, target: aarch64, manylinux: "2_17" }
+          - { label: linux-musl-x86_64, os: ubuntu-latest, target: x86_64, manylinux: musllinux_1_2 }
+          - { label: macos-x86_64, os: macos-latest, target: x86_64, manylinux: auto }
+          - { label: macos-arm64, os: macos-latest, target: aarch64, manylinux: auto }
+          - { label: windows-x86_64, os: windows-latest, target: x64, manylinux: auto }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: --release --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.label }}
+          path: dist/*.whl
+
+  sdist:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  binaries:
+    name: binary (${{ matrix.target }})
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-musl }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl }
+          - { os: macos-latest, target: x86_64-apple-darwin }
+          - { os: macos-latest, target: aarch64-apple-darwin }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - if: contains(matrix.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: |
+          name="dikt-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir -p "$name" out
+          cp README.md "$name/"
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            cp "target/${{ matrix.target }}/release/dikt.exe" "$name/"
+            7z a "out/$name.zip" "$name" > /dev/null
+          else
+            cp "target/${{ matrix.target }}/release/dikt" "$name/"
+            tar czf "out/$name.tar.gz" "$name"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: out/*
+
+  release:
+    needs: [wheels, sdist, binaries]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            Install into a uv project (prebuilt wheel, no Rust needed): see the
+            [tutorial](https://github.com/dark-neonus/dikt/blob/main/docs/TUTORIAL.md#install).
+
+            Standalone binaries: `dikt-<tag>-<target>.tar.gz` / `.zip`. Verify with `SHA256SUMS`.

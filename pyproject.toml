@@ -3,8 +3,8 @@ requires = ["maturin>=1.9,<2"]
 build-backend = "maturin"
 
 [project]
-name = "dikt"
-version = "0.1.0"
+name = "dikt-cli"
+dynamic = ["version"]
 description = "Decisions, ideas, knowledge and tasks as validated local Markdown, for people and AI agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,6 +14,11 @@ classifiers = [
     "Environment :: Console",
     "Topic :: Office/Business",
 ]
+
+[project.urls]
+Homepage = "https://github.com/dark-neonus/dikt"
+Documentation = "https://github.com/dark-neonus/dikt/blob/main/docs/TUTORIAL.md"
+Issues = "https://github.com/dark-neonus/dikt/issues"
 
 [tool.maturin]
 # Ship the Rust executable as the `dikt` console command (no Python module).

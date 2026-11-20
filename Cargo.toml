@@ -5,7 +5,8 @@ edition = "2024"
 rust-version = "1.88"
 description = "Decisions, ideas, knowledge and tasks as validated local Markdown, for people and AI agents"
 readme = "README.md"
-include = ["src/**", "templates/**", "tests/**", "Cargo.toml", "Cargo.lock", "pyproject.toml", "README.md"]
+repository = "https://github.com/dark-neonus/dikt"
+include = ["src/**", "templates/**", "tests/**", "Cargo.toml", "Cargo.lock", "pyproject.toml", "README.md", "docs/**"]
 
 [[bin]]
 name = "dikt"

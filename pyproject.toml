@@ -1,0 +1,21 @@
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
+[project]
+name = "dikt"
+version = "0.1.0"
+description = "Decisions, ideas, knowledge and tasks as validated local Markdown, for people and AI agents"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["knowledge-management", "tasks", "decisions", "ai-agents", "cli"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Environment :: Console",
+    "Topic :: Office/Business",
+]
+
+[tool.maturin]
+# Ship the Rust executable as the `dikt` console command (no Python module).
+bindings = "bin"
+strip = true

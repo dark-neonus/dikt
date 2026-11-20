@@ -221,3 +221,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+Context/
+
+# Added by cargo
+
+/target
+
+# Rust
+/target/

@@ -1,0 +1,14 @@
+# Canonical tag registry. Every item needs at least one tag that is NOT in broad_tags.
+# Names: lowercase letters/digits, hyphen-separated words. Register before use.
+tags:
+  - architecture
+  - tooling
+  - research
+  - documentation
+  - testing
+  - dikt
+
+broad_tags:
+  - architecture
+  - tooling
+  - research

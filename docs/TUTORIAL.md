@@ -293,8 +293,8 @@ type: task
 title: Add CSV export
 tags:
 - csv-export
-created: "2026-11-20T02:58:16.735266+02:00"
-updated: "2026-11-20T02:58:16.748831+02:00"
+created: "2026-11-20T03:13:24.691723+02:00"
+updated: "2026-11-20T03:13:24.709971+02:00"
 links:
   jira: []
   mr: []
@@ -317,9 +317,12 @@ Users want to download forecasts as CSV.
 ## Outcome
 
 ## Log
-- 2026-11-20T02:58:16.735602+02:00 [created] Add CSV export
-- 2026-11-20T02:58:16.741233+02:00 [updated] {"fields": {"status": "in_progress"}}
-- 2026-11-20T02:58:16.748861+02:00 [note] Excel needs a UTF-8 BOM to show non-ASCII city names
+- 2026-11-20T03:13:24.692022+02:00 [created] Add CSV export
+- 2026-11-20T03:13:24.695698+02:00 [updated] {"fields": {"status": "in_progress"}}
+- 2026-11-20T03:13:24.699249+02:00 [updated] {"add_check": "Write exporter"}
+- 2026-11-20T03:13:24.702762+02:00 [updated] {"add_check": "Add tests"}
+- 2026-11-20T03:13:24.706402+02:00 [updated] {"check": 1}
+- 2026-11-20T03:13:24.709999+02:00 [note] Excel needs a UTF-8 BOM to show non-ASCII city names
 ```
 
 The file lives at `dikt/tasks/T-00001-add-csv-export.md`. You can read it,

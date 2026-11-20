@@ -22,4 +22,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
+      - name: cargo test
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --no-fail-fast 2>&1 | tee test.log
+      - name: Surface test failures as an annotation
+        if: failure()
+        shell: bash
+        run: |
+          grep -E -A25 "^---- |panicked" test.log | head -120 > failures.txt || true
+          echo "::error title=cargo test failures::$(sed -e 's/%/%25/g' failures.txt | awk '{printf "%s%%0A", $0}')"

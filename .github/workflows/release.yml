@@ -1,16 +1,24 @@
 name: Release
 
 # Push a tag like v0.1.0 to build wheels, an sdist and standalone binaries,
-# then publish them as a GitHub release.
+# publish them as a GitHub release, then upload the wheels and sdist to PyPI.
+# Run manually (Actions → Release → Run workflow) to upload an existing
+# release's files to PyPI without rebuilding.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to upload to PyPI (e.g. v0.1.0)
+        required: true
 
 permissions:
   contents: write
 
 jobs:
   test:
+    if: github.event_name == 'push'
     uses: ./.github/workflows/ci.yml
 
   wheels:
@@ -111,3 +119,22 @@ jobs:
             [tutorial](https://github.com/dark-neonus/dikt/blob/main/docs/TUTORIAL.md#install).
 
             Standalone binaries: `dikt-<tag>-<target>.tar.gz` / `.zip`. Verify with `SHA256SUMS`.
+
+  pypi:
+    # Trusted publishing: no token. One-time setup on pypi.org (see README, "Releasing").
+    needs: [release]
+    if: always() && (needs.release.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dikt-cli
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download release wheels and sdist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'dikt_cli-*' --dir dist && ls -l dist
+      - uses: pypa/gh-action-pypi-publish@release/v1

@@ -104,8 +104,14 @@ Releasing: bump `version` in `Cargo.toml`, commit, then tag and push
 (`git tag v0.2.0 && git push origin v0.2.0`). The `Release` workflow runs the
 tests, builds wheels (Linux glibc x86_64/aarch64, Linux musl x86_64, macOS
 x86_64/arm64, Windows x86_64), an sdist and standalone binaries, and publishes them with
-`SHA256SUMS` as a GitHub release. Then update the `v0.1.0` URLs in this
-README and the tutorial.
+`SHA256SUMS` as a GitHub release, then uploads the wheels and sdist to PyPI
+as `dikt-cli`.
+
+PyPI upload uses [trusted publishing](https://docs.pypi.org/trusted-publishers/)
+(no API token). One-time setup on pypi.org → *Your account → Publishing →
+Add a new pending publisher*: PyPI project `dikt-cli`, owner `dark-neonus`,
+repository `dikt`, workflow `release.yml`, environment `pypi`. To upload an
+already-built release, run *Actions → Release → Run workflow* with its tag.
 
 Layout:
 

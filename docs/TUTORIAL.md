@@ -55,40 +55,26 @@ consistent even when an agent makes a mistake.
 You need [uv](https://docs.astral.sh/uv/) for options A–C. Option D needs
 nothing at all.
 
-> **Note:** the PyPI package called `dikt` is an **unrelated** project. This
-> tool's Python distribution is named **`dikt-cli`** and is installed from
-> GitHub releases, not PyPI. The command is still `dikt`.
+> **Note:** the package is called **`dikt-cli`**; the command it installs is
+> `dikt`. The PyPI package named `dikt` is an **unrelated** project.
 
-### A. Prebuilt wheel into a uv project (recommended)
+### A. Into a uv project (recommended)
 
-This needs no Rust toolchain. Add the release as a package source in your
-project's `pyproject.toml`:
-
-```toml
-[[tool.uv.index]]
-name = "dikt"
-url = "https://github.com/dark-neonus/dikt/releases/expanded_assets/v0.1.0"
-format = "flat"
-explicit = true
-
-[tool.uv.sources]
-dikt-cli = { index = "dikt" }
-```
-
-Then:
+One command, from the project directory:
 
 ```sh
 uv add --dev dikt-cli
 uv run dikt --version
 ```
 
-`explicit = true` together with `[tool.uv.sources]` guarantees that `dikt-cli` only ever
-comes from the GitHub release. To upgrade later, change `v0.1.0` in the URL
-and run `uv lock --upgrade-package dikt-cli`.
+This adds `dikt-cli` to the project's dev dependencies and pins it in
+`uv.lock`, so everyone who runs `uv sync` gets the same version. If the
+project has no `pyproject.toml` yet, run `uv init` first.
 
-Prebuilt wheels cover Linux x86_64/aarch64 (glibc ≥ 2.17), Linux x86_64 musl,
-macOS x86_64/arm64 and Windows x86_64. On other platforms uv falls back to the
-source distribution, which needs Rust (see B).
+[`dikt-cli` on PyPI](https://pypi.org/project/dikt-cli/) ships prebuilt
+binaries for Linux x86_64/aarch64 (glibc ≥ 2.17), Linux x86_64 musl, macOS
+x86_64/arm64 and Windows x86_64, so no Rust is needed. On other platforms uv
+builds it from source, which needs Rust (see B).
 
 ### B. From source (needs Rust ≥ 1.88)
 
@@ -96,16 +82,18 @@ source distribution, which needs Rust (see B).
 uv add --dev "dikt-cli @ git+https://github.com/dark-neonus/dikt"
 # or from a local checkout:
 uv add --dev /path/to/dikt
+# or globally with Cargo:
+cargo install --git https://github.com/dark-neonus/dikt
 ```
 
 ### C. As a global tool
 
 ```sh
-uv tool install dikt-cli --find-links https://github.com/dark-neonus/dikt/releases/expanded_assets/v0.1.0
+uv tool install dikt-cli
 dikt --version
 ```
 
-or with Cargo: `cargo install --git https://github.com/dark-neonus/dikt`.
+To try it without installing anything: `uvx --from dikt-cli dikt --help`.
 
 ### D. Standalone binary
 
@@ -725,8 +713,7 @@ D-00001 [superseded] Cache forecasts in Redis for 30 minutes
 Upgrade:
 
 ```sh
-# option A: bump the release tag in [[tool.uv.index]] url, then
-uv lock --upgrade-package dikt-cli && uv sync
+uv add --dev dikt-cli --upgrade # project install (A); global: uv tool upgrade dikt-cli
 uv run dikt validate
 uv run dikt init --refresh      # update managed docs and skills
 git diff                        # review what changed

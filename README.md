@@ -17,37 +17,24 @@ and the blueprint's 47 regression scenarios are preserved (see
 
 ## Install into a project (uv)
 
-Prebuilt wheels for Linux, macOS and Windows are attached to every
-[GitHub release](https://github.com/dark-neonus/dikt/releases), so no Rust
-toolchain is needed. Add the release as a pinned package source in your
-project's `pyproject.toml`:
-
-```toml
-[[tool.uv.index]]
-name = "dikt"
-url = "https://github.com/dark-neonus/dikt/releases/expanded_assets/v0.1.0"
-format = "flat"
-explicit = true
-
-[tool.uv.sources]
-dikt-cli = { index = "dikt" }
-```
-
 ```sh
 uv add --dev dikt-cli
 uv run dikt init                          # create dikt/ + agent skills and instructions
 uv run dikt add task --title "Try DIKT" --tag dikt
 ```
 
-> The Python distribution is **`dikt-cli`**. The PyPI package named `dikt` is
-> an unrelated project, so don't `uv add dikt`. The installed command is `dikt`.
+[`dikt-cli`](https://pypi.org/project/dikt-cli/) ships prebuilt binaries for
+Linux, macOS and Windows, so no Rust toolchain is needed.
+
+> Install **`dikt-cli`**; the installed command is `dikt`. The PyPI package
+> named `dikt` is an unrelated project, so don't `uv add dikt`.
 
 Other ways to install (details in the [tutorial](docs/TUTORIAL.md#install)):
 
-- From source (needs Rust ≥ 1.88): `uv add --dev "dikt-cli @ git+https://github.com/dark-neonus/dikt"`
-- As a global tool: `uv tool install dikt-cli --find-links https://github.com/dark-neonus/dikt/releases/expanded_assets/v0.1.0`
-- As a standalone binary: download `dikt-<version>-<target>.tar.gz`/`.zip` from the releases page
-- With Cargo: `cargo install --git https://github.com/dark-neonus/dikt`
+- As a global tool: `uv tool install dikt-cli`
+- Without installing: `uvx --from dikt-cli dikt --help`
+- As a standalone binary: download `dikt-<version>-<target>.tar.gz`/`.zip` from the [releases page](https://github.com/dark-neonus/dikt/releases)
+- From source (needs Rust ≥ 1.88): `uv add --dev "dikt-cli @ git+https://github.com/dark-neonus/dikt"` or `cargo install --git https://github.com/dark-neonus/dikt`
 
 `dikt init` writes `uv run dikt` into the generated docs when the binary lives
 in the project's `.venv`, and plain `dikt` otherwise. Override with `--command`.

@@ -155,8 +155,10 @@ impl Installer {
         let relative = path
             .strip_prefix(&self.project)
             .unwrap_or(path)
-            .display()
-            .to_string();
+            .components()
+            .map(|part| part.as_os_str().to_string_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join("/");
         self.log.push((relative, status));
     }
 

@@ -40,8 +40,9 @@ not treat generated views as independent facts.
 5. Environment facts: context. Tool setup: tools. Repeated steps: procedures.
 6. Learning and recall: guides. Preserved external material: docs.
 
-All four item types have schema_version, id, type, title, status, tags,
-created, updated, links and Description/Log sections. Tasks add priority,
+All four item types have schema_version, id, type, title, author (optional,
+set on creation), status, tags, created, updated, links and Description/Log
+sections. Tasks add priority,
 due, checklist and an Outcome section. Ideas add promoted_to. Knowledge adds
 source, last_verified and supersedes. Decisions add decided, revisit,
 revisit_when, based_on, supersedes, superseded_by and Context, Options,

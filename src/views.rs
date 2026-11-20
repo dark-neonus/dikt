@@ -3,7 +3,7 @@
 use std::fs;
 use std::sync::LazyLock;
 
-use chrono::{Datelike, Duration, NaiveDate};
+use chrono::{DateTime, Datelike, Duration, NaiveDate};
 use regex::Regex;
 
 use crate::bail;
@@ -142,19 +142,27 @@ pub fn backlog_text(items: &Items, today_override: Option<NaiveDate>) -> String 
 /// Log events of every item on a given day: (item, event, message).
 pub fn activity(items: &Items, day: NaiveDate) -> Vec<(&Item, String, String)> {
     static ENTRY: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"^- (\d{4}-\d{2}-\d{2})T\S+ \[([a-z_]+)\] (.*)$").unwrap());
+        LazyLock::new(|| Regex::new(r"^- ((\d{4}-\d{2}-\d{2})T\S+) \[([a-z_]+)\] (.*)$").unwrap());
     let day = day.to_string();
     let mut result = Vec::new();
     for item in items.values() {
         for line in item.section("Log").lines() {
             if let Some(captures) = ENTRY.captures(line)
-                && captures[1] == day
+                && captures[2] == day
             {
-                result.push((item, captures[2].to_string(), captures[3].to_string()));
+                let at = DateTime::parse_from_rfc3339(&captures[1])
+                    .map(|time| time.timestamp_micros())
+                    .unwrap_or(0);
+                result.push((at, item, captures[3].to_string(), captures[4].to_string()));
             }
         }
     }
+    // Chronological, not by file name: IDs are hashes and carry no order.
+    result.sort_by(|a, b| (a.0, a.1.id()).cmp(&(b.0, b.1.id())));
     result
+        .into_iter()
+        .map(|(_, item, event, message)| (item, event, message))
+        .collect()
 }
 
 pub fn daily_text(items: &Items, day: NaiveDate) -> String {

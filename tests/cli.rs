@@ -1,4 +1,4 @@
-//! Port of the blueprint's tests/test_cli.py.
+//! End-to-end behaviour of the command-line interface.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -171,23 +171,26 @@ fn decision_search_and_evidence() {
 #[test]
 fn projection_and_pagination() {
     let cli = Cli::new();
-    for index in 0..3 {
-        cli.ok(&[
-            "add",
-            "idea",
-            "--title",
-            &format!("Idea {index}"),
-            "--tag",
-            "cli",
-        ]);
-    }
+    let created: Vec<String> = (0..3)
+        .map(|index| {
+            cli.id(&[
+                "add",
+                "idea",
+                "--title",
+                &format!("Idea {index}"),
+                "--tag",
+                "cli",
+            ])
+        })
+        .collect();
     let rows: Vec<Value> =
         serde_json::from_str(&cli.ok(&["list", "--limit", "2", "--json"])).unwrap();
     assert_eq!(rows.len(), 2);
     let rows: Value =
         serde_json::from_str(&cli.ok(&["list", "--limit", "2", "--offset", "2", "--fields", "id"]))
             .unwrap();
-    assert_eq!(rows, serde_json::json!([{"id": "I-00003"}]));
+    // Oldest first, so the third page entry is the last idea created.
+    assert_eq!(rows, serde_json::json!([{"id": created[2]}]));
     let (_, _, err) = cli.raw(&["list", "--limit", "2"]);
     assert!(err.contains("More results: --offset 2 (3 total)"));
 }

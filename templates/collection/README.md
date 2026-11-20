@@ -46,7 +46,7 @@ Run command-specific `--help` for actual options. `list` defaults to 20 results;
 use `--limit` and `--offset` to page. Filters include `--status`, `--tag`,
 `--since`, `--due`, `--based-on`, `--related` and `--revisit-due`. Search
 matches all whitespace-separated words case-insensitively across rendered
-metadata and body, including logs. Ordering is by stable ID, not relevance.
+metadata and body, including logs. Ordering is oldest-first by creation time, not relevance.
 Use `--fields id,title,tags` for projection and `--json` for machine output.
 Diagnostics are on stderr. Search free-form resources separately.
 
@@ -72,9 +72,18 @@ Evidence IDs in based_on must identify existing knowledge. Due revisit dates
 and outdated/superseded evidence flag review without reversing the choice.
 Evaluate free-text revisit conditions against observed facts.
 
-Filenames contain stable prefixed IDs: T-, I-, K-, D-, with at least five
-digits. Title changes rename the file, never the ID. Closed records stay put.
+Filenames start with the item's stable ID: a type letter (T-, I-, K-, D-) and
+8 hex digits, for example `T-3f9a1c2e`. The ID is a hash of the type, title,
+first ten tags, creation time and author, fixed at creation. Two people
+creating items on separate branches therefore get different IDs and different
+files, and the branches merge without conflicts. IDs carry no order; use
+`dikt list` (oldest first). Sequential IDs (`T-00001`) from dikt 0.1.0 remain
+valid. Title changes rename the file, never the ID. Closed records stay put.
 Creation/update timestamps carry a timezone; calendar fields use YYYY-MM-DD.
+
+Every new item records its `author`: `--author NAME`, else `$DIKT_AUTHOR`, else
+`git config user.name`, else the OS user. The author never changes, and
+`dikt list --author NAME` filters by it.
 
 ## Tagging Policy
 
@@ -112,8 +121,10 @@ File writes use atomic replacement and serialize writers with `.dikt-write.lock`
 Ordinary multi-file write failures attempt rollback, but process/OS crashes
 can interrupt a multi-file change. Inspect differences, back up and validate
 before approved repair. Remove a stale lock only if no writer is running.
-IDs allocate from retained files: never delete records or reuse IDs. Separate
-clones can allocate conflicting IDs; resolve Git conflicts explicitly.
+Never delete records. Hash IDs avoid cross-branch collisions, but two people
+editing the same item still conflict in Git like any file, and so do shared
+files such as `tags.yaml` (when both add a tag) and a day's report (when both
+generate it): resolve those explicitly, and regenerate reports after merging.
 No database, full-text index, embeddings, MCP adapter or migration command
 is implemented.
 

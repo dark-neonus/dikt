@@ -1,6 +1,6 @@
 ---
 name: dikt
-description: "Use when searching, creating or updating the project's tasks, ideas, knowledge or decisions; capturing useful findings; analyzing prior decisions; triaging the DIKT inbox; or generating daily and weekly reports. Operates through the validated dikt CLI."
+description: "Use at the start of any question or task, including everyday and personal ones, to check what the project already records (earlier decisions, plans, preferences, tasks, knowledge); and when searching, creating or updating the project's tasks, ideas, knowledge or decisions; capturing useful findings; analyzing prior decisions; triaging the DIKT inbox; or generating daily and weekly reports. Operates through the validated dikt CLI."
 ---
 
 # DIKT Management
@@ -27,7 +27,8 @@ Read [{{ROOT}}/AGENTS.md]({{UP}}{{ROOT}}/AGENTS.md) for retrieval and preservati
    Use `--help` on the specific command instead of guessing flags. `add`
    prints the new ID. Use `edit --section Name --file PATH` for long text.
 5. Link real evidence with `--based-on` on decisions or `--link items=ID` on
-   other records. Do not invent IDs. Follow the tagging policy: register
+   other records. IDs look like `T-3f9a1c2e`; take them from command output and
+   never invent them. Follow the tagging policy: register
    clear new canonical tags in `{{ROOT}}/tags.yaml` when needed and include every
    central technology or workflow. Broad-only tagging is rejected; there is no
    tag-count ceiling.

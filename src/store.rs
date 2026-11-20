@@ -11,6 +11,7 @@ use chrono::{DateTime, Local, NaiveDate};
 use indexmap::IndexMap;
 use regex::Regex;
 use serde_json::{Map, Value, json};
+use sha2::{Digest, Sha256};
 use unicode_normalization::UnicodeNormalization;
 
 use crate::bail;
@@ -37,6 +38,8 @@ const COMMON: [&str; 9] = [
     "updated",
     "links",
 ];
+/// Optional on read (items written before authorship existed have none); set on creation.
+const OPTIONAL: [&str; 1] = ["author"];
 const LINK_KINDS: [&str; 5] = ["jira", "mr", "commits", "confluence", "items"];
 const RATIONALE: [&str; 4] = ["Context", "Options", "Decision", "Consequences"];
 
@@ -362,6 +365,8 @@ pub type Items = IndexMap<String, Item>;
 
 pub struct Store {
     pub root: PathBuf,
+    /// Recorded as `author` on items created through this store (see [`default_author`]).
+    pub author: Option<String>,
     fail_write: Cell<Option<usize>>,
     write_count: Cell<usize>,
 }
@@ -372,9 +377,15 @@ impl Store {
             .map_err(|error| Error(format!("{}: {error}", root.display())))?;
         Ok(Store {
             root,
+            author: None,
             fail_write: Cell::new(None),
             write_count: Cell::new(0),
         })
+    }
+
+    pub fn with_author(mut self, author: Option<String>) -> Self {
+        self.author = author;
+        self
     }
 
     /// Test hook: make the n-th subsequent file write of a commit fail.
@@ -552,7 +563,11 @@ impl Store {
         let unknown: BTreeSet<&String> = item
             .metadata
             .keys()
-            .filter(|key| !defaults.contains_key(*key) && !COMMON.contains(&key.as_str()))
+            .filter(|key| {
+                !defaults.contains_key(*key)
+                    && !COMMON.contains(&key.as_str())
+                    && !OPTIONAL.contains(&key.as_str())
+            })
             .collect();
         if !unknown.is_empty() {
             bail!("Unknown fields: {:?}", unknown.iter().collect::<Vec<_>>());
@@ -627,20 +642,39 @@ impl Store {
         let Some(letter) = prefix(kind) else {
             bail!("Unknown type: {kind}");
         };
-        let next = items
-            .keys()
-            .filter_map(|identifier| identifier.strip_prefix(&format!("{letter}-")))
-            .filter_map(|number| number.parse::<u64>().ok())
-            .max()
-            .unwrap_or(0)
-            + 1;
-        let identifier = format!("{letter}-{next:05}");
+        let tags: Vec<String> = fields
+            .get("tags")
+            .and_then(Value::as_array)
+            .map(|tags| {
+                tags.iter()
+                    .filter_map(Value::as_str)
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+        let author = fields
+            .get("author")
+            .and_then(Value::as_str)
+            .map(String::from)
+            .or_else(|| self.author.clone());
         let timestamp = now();
+        let identifier = new_id(
+            letter,
+            items,
+            kind,
+            title,
+            &tags,
+            &timestamp,
+            author.as_deref().unwrap_or(""),
+        );
         let mut metadata = Map::new();
         metadata.insert("schema_version".into(), json!(1));
         metadata.insert("id".into(), json!(identifier));
         metadata.insert("type".into(), json!(kind));
         metadata.insert("title".into(), json!(title));
+        if let Some(author) = &author {
+            metadata.insert("author".into(), json!(author));
+        }
         metadata.insert("tags".into(), json!([]));
         metadata.insert("created".into(), json!(timestamp));
         metadata.insert("updated".into(), json!(timestamp));
@@ -786,6 +820,7 @@ impl Store {
             "schema_version",
             "created",
             "updated",
+            "author",
             "superseded_by",
             "promoted_to",
         ];
@@ -994,6 +1029,81 @@ impl Change {
     }
 }
 
+/// Number of leading tags that feed the ID hash.
+const ID_TAGS: usize = 10;
+
+/// A collision-resistant ID: the type letter plus 8 hex digits of a SHA-256 over the
+/// type, title, first ten tags, creation time and author. Two people creating items
+/// on separate branches get different IDs (and therefore different file names), so
+/// their branches merge without conflicts. `nonce` only matters on a local collision.
+pub fn new_id(
+    letter: &str,
+    items: &Items,
+    kind: &str,
+    title: &str,
+    tags: &[String],
+    created: &str,
+    author: &str,
+) -> String {
+    let tags = tags
+        .iter()
+        .take(ID_TAGS)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(",");
+    for nonce in 0u32.. {
+        let mut hasher = Sha256::new();
+        for part in [kind, title, &tags, created, author, &nonce.to_string()] {
+            hasher.update(part.as_bytes());
+            hasher.update([0]);
+        }
+        let digest = hasher.finalize();
+        let hex: String = digest[..4]
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        let identifier = format!("{letter}-{hex}");
+        if !items.contains_key(&identifier) {
+            return identifier;
+        }
+    }
+    unreachable!("a free ID always exists")
+}
+
+/// Who is writing: `DIKT_AUTHOR`, else `git config user.name` of the collection, else the OS user.
+pub fn default_author(root: &Path) -> Option<String> {
+    let clean = |text: &str| {
+        let text = text.trim();
+        (!text.is_empty() && !text.contains(['\r', '\n'])).then(|| text.to_string())
+    };
+    if let Some(name) = std::env::var("DIKT_AUTHOR")
+        .ok()
+        .and_then(|name| clean(&name))
+    {
+        return Some(name);
+    }
+    let git = std::process::Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["config", "user.name"])
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| clean(&String::from_utf8_lossy(&output.stdout)));
+    git.or_else(|| {
+        ["USER", "USERNAME"]
+            .iter()
+            .find_map(|name| std::env::var(name).ok().and_then(|value| clean(&value)))
+    })
+}
+
+/// Creation time as a sortable instant (microseconds since the epoch; unparsable sorts first).
+pub fn created_micros(item: &Item) -> i64 {
+    DateTime::parse_from_rfc3339(item.str("created"))
+        .map(|time| time.timestamp_micros())
+        .unwrap_or(0)
+}
+
 pub fn references(item: &Item) -> Vec<String> {
     let mut result = item.links("items");
     result.extend(item.list("based_on"));
@@ -1135,10 +1245,10 @@ mod schema {
         }
         let letter = prefix(kind).unwrap();
         match field("id").as_str() {
-            Some(id) if pattern(id, &format!("^{letter}-[0-9]{{5,}}$")) => {}
+            Some(id) if pattern(id, &format!("^{letter}-(?:[0-9a-f]{{8}}|[0-9]{{5,}})$")) => {}
             _ => {
                 return Err(format!(
-                    "id: {} does not match '^{letter}-[0-9]{{5,}}$'",
+                    "id: {} does not match '^{letter}-(?:[0-9a-f]{{8}}|[0-9]{{5,}})$'",
                     field("id")
                 ));
             }
@@ -1146,6 +1256,13 @@ mod schema {
         match field("title").as_str() {
             Some(title) if !title.trim().is_empty() && !title.contains(['\r', '\n']) => {}
             _ => return Err("title: must be a nonempty single-line string".into()),
+        }
+        if let Some(author) = metadata.get("author")
+            && !author
+                .as_str()
+                .is_some_and(|name| !name.trim().is_empty() && !name.contains(['\r', '\n']))
+        {
+            return Err("author: must be a nonempty single-line string".into());
         }
         string_list(field("tags"), "tags", false)?;
         for name in ["created", "updated"] {
@@ -1211,7 +1328,11 @@ mod schema {
             }
             "idea" => {
                 one_of(field("status"), "status", &["open", "promoted", "dropped"])?;
-                optional_id(field("promoted_to"), "promoted_to", r"^T-[0-9]{5,}$")?;
+                optional_id(
+                    field("promoted_to"),
+                    "promoted_to",
+                    r"^T-(?:[0-9a-f]{8}|[0-9]{5,})$",
+                )?;
             }
             "knowledge" => {
                 one_of(field("status"), "status", &["active", "outdated"])?;
@@ -1222,7 +1343,11 @@ mod schema {
                     return Err("source: a nonempty source is required".into());
                 }
                 date(field("last_verified"), "last_verified", true)?;
-                id_list(field("supersedes"), "supersedes", r"^K-[0-9]{5,}$")?;
+                id_list(
+                    field("supersedes"),
+                    "supersedes",
+                    r"^K-(?:[0-9a-f]{8}|[0-9]{5,})$",
+                )?;
             }
             "decision" => {
                 one_of(
@@ -1235,9 +1360,21 @@ mod schema {
                 if !field("revisit_when").is_string() {
                     return Err("revisit_when: must be a string".into());
                 }
-                id_list(field("based_on"), "based_on", r"^K-[0-9]{5,}$")?;
-                id_list(field("supersedes"), "supersedes", r"^D-[0-9]{5,}$")?;
-                optional_id(field("superseded_by"), "superseded_by", r"^D-[0-9]{5,}$")?;
+                id_list(
+                    field("based_on"),
+                    "based_on",
+                    r"^K-(?:[0-9a-f]{8}|[0-9]{5,})$",
+                )?;
+                id_list(
+                    field("supersedes"),
+                    "supersedes",
+                    r"^D-(?:[0-9a-f]{8}|[0-9]{5,})$",
+                )?;
+                optional_id(
+                    field("superseded_by"),
+                    "superseded_by",
+                    r"^D-(?:[0-9a-f]{8}|[0-9]{5,})$",
+                )?;
             }
             _ => unreachable!(),
         }

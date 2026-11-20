@@ -38,6 +38,14 @@ inside the project itself:
 | **Knowledge** | `K-` | A verified, reusable fact with a source | active, outdated |
 | **Decision** | `D-` | A choice and its rationale | proposed, accepted, rejected, superseded |
 
+Every item has a stable ID: its type letter and 8 hex digits, such as
+`T-3f9a1c2e`. The digits are a hash of the type, title, first ten tags,
+creation time and author, so people working on separate branches practically
+never create the same ID (see [Git and teams](#14-git-and-teams)). They carry no
+order; `dikt list` shows the oldest items first. Each new item also records
+its `author`: the `--author` value, else `$DIKT_AUTHOR`, else
+`git config user.name`.
+
 The `dikt` CLI is the only writer. It validates every change: required
 fields, allowed statuses, tags, links between items and lifecycle rules. For
 example, a done task needs an outcome, and an accepted decision needs its full
@@ -220,7 +228,7 @@ $ dikt add task --title "Bad" --tag nonexistent
 Error: Unknown tags: ["nonexistent"]; register canonical tags in tags.yaml first
 
 $ dikt add task --title "Bad" --tag architecture
-Error: T-00001: at least one specific tag outside broad_tags is required
+Error: T-fa75f7e2: at least one specific tag outside broad_tags is required
 ```
 
 ---
@@ -232,7 +240,7 @@ Create a task. `add` prints the new ID; always use the ID it returns.
 ```console
 $ dikt add task --title "Add CSV export" --tag csv-export --priority 2 --due 2026-11-27 \
     --description "Users want to download forecasts as CSV."
-T-00001
+T-962f5dff
 ```
 
 Priority runs from 1 (highest) to 4, and the default is 3. Dates use
@@ -241,48 +249,49 @@ Priority runs from 1 (highest) to 4, and the default is 3. Dates use
 Work on it:
 
 ```console
-$ dikt update T-00001 --status in_progress
-$ dikt update T-00001 --add-check "Write exporter"     # one checklist item per call
-$ dikt update T-00001 --add-check "Add tests"
-$ dikt update T-00001 --check 1                        # 1-based; --uncheck N undoes
-$ dikt log T-00001 "Excel needs a UTF-8 BOM to show non-ASCII city names"
+$ dikt update T-962f5dff --status in_progress
+$ dikt update T-962f5dff --add-check "Write exporter"     # one checklist item per call
+$ dikt update T-962f5dff --add-check "Add tests"
+$ dikt update T-962f5dff --check 1                        # 1-based; --uncheck N undoes
+$ dikt log T-962f5dff "Excel needs a UTF-8 BOM to show non-ASCII city names"
 ```
 
 Log real findings, blockers and progress, not every keystroke. Other updates:
 
 ```sh
-dikt update T-00001 --title "Add CSV and Excel export"   # renames the file, never the ID
-dikt update T-00001 --priority 1 --due 2026-11-25
-dikt update T-00001 --set due=null                       # clear a field (JSON values)
-dikt update T-00001 --status blocked
-dikt update T-00001 --link items=K-00001                 # link related items by ID
-dikt edit T-00001 --section Description --text "New description"
-dikt edit T-00001 --section Description --file notes.md  # long text from a file
+dikt update T-962f5dff --title "Add CSV and Excel export"   # renames the file, never the ID
+dikt update T-962f5dff --priority 1 --due 2026-11-25
+dikt update T-962f5dff --set due=null                       # clear a field (JSON values)
+dikt update T-962f5dff --status blocked
+dikt update T-962f5dff --link items=K-e817ebbe                 # link related items by ID
+dikt edit T-962f5dff --section Description --text "New description"
+dikt edit T-962f5dff --section Description --file notes.md  # long text from a file
 ```
 
 Finish with an outcome; a done task without one is rejected:
 
 ```console
-$ dikt close T-00001 --outcome "Exporter shipped with BOM; 4 tests added"
-T-00001
+$ dikt close T-962f5dff --outcome "Exporter shipped with BOM; 4 tests added"
+T-962f5dff
 ```
 
-Use `dikt update T-00001 --status cancelled` for work you decide not to do.
+Use `dikt update T-962f5dff --status cancelled` for work you decide not to do.
 Records are never deleted.
 
 This is what is on disk:
 
 ```console
-$ dikt get T-00001 --full
+$ dikt get T-962f5dff --full
 ---
 schema_version: 1
-id: T-00001
+id: T-962f5dff
 type: task
 title: Add CSV export
+author: Alex Morgan
 tags:
 - csv-export
-created: "2026-11-20T03:13:24.691723+02:00"
-updated: "2026-11-20T03:13:24.709971+02:00"
+created: "2026-11-20T13:50:50.076643+02:00"
+updated: "2026-11-20T13:50:50.092210+02:00"
 links:
   jira: []
   mr: []
@@ -305,15 +314,15 @@ Users want to download forecasts as CSV.
 ## Outcome
 
 ## Log
-- 2026-11-20T03:13:24.692022+02:00 [created] Add CSV export
-- 2026-11-20T03:13:24.695698+02:00 [updated] {"fields": {"status": "in_progress"}}
-- 2026-11-20T03:13:24.699249+02:00 [updated] {"add_check": "Write exporter"}
-- 2026-11-20T03:13:24.702762+02:00 [updated] {"add_check": "Add tests"}
-- 2026-11-20T03:13:24.706402+02:00 [updated] {"check": 1}
-- 2026-11-20T03:13:24.709999+02:00 [note] Excel needs a UTF-8 BOM to show non-ASCII city names
+- 2026-11-20T13:50:50.076916+02:00 [created] Add CSV export
+- 2026-11-20T13:50:50.080163+02:00 [updated] {"fields": {"status": "in_progress"}}
+- 2026-11-20T13:50:50.083084+02:00 [updated] {"add_check": "Write exporter"}
+- 2026-11-20T13:50:50.086254+02:00 [updated] {"add_check": "Add tests"}
+- 2026-11-20T13:50:50.089293+02:00 [updated] {"check": 1}
+- 2026-11-20T13:50:50.092235+02:00 [note] Excel needs a UTF-8 BOM to show non-ASCII city names
 ```
 
-The file lives at `dikt/tasks/T-00001-add-csv-export.md`. You can read it,
+The file lives at `dikt/tasks/T-962f5dff-add-csv-export.md`. You can read it,
 but **don't edit item files by hand**: always go through `dikt`.
 
 ---
@@ -325,23 +334,23 @@ An idea is a possibility you don't want to lose but haven't committed to:
 ```console
 $ dikt add idea --title "Cache API responses" --tag caching --tag weather-api \
     --description "Forecasts change hourly; most requests repeat."
-I-00001
+I-92990322
 ```
 
 When you decide to do it, **promote** it. This creates a linked task and keeps the idea:
 
 ```console
-$ dikt promote I-00001
-T-00002
-$ dikt get I-00001 --fields status,promoted_to
+$ dikt promote I-92990322
+T-459eaace
+$ dikt get I-92990322 --fields status,promoted_to
 {
   "status": "promoted",
-  "promoted_to": "T-00002"
+  "promoted_to": "T-459eaace"
 }
 ```
 
 An idea can be promoted once. Drop ideas you've rejected with
-`dikt update I-00001 --status dropped`.
+`dikt update I-92990322 --status dropped`.
 
 ---
 
@@ -353,13 +362,13 @@ Knowledge is a **verified, reusable fact** with a concrete source. A source is r
 $ dikt add knowledge --title "Open-Meteo free tier allows 10k calls per day" \
     --tag open-meteo --tag weather-api \
     --source "https://open-meteo.com/en/terms (read 2026-11-20)"
-K-00001
+K-e817ebbe
 ```
 
-- After re-checking a fact, record when: `dikt update K-00001 --set last_verified=2026-11-20`.
-- If a fact stopped being true, use `dikt update K-00001 --status outdated`.
+- After re-checking a fact, record when: `dikt update K-e817ebbe --set last_verified=2026-11-20`.
+- If a fact stopped being true, use `dikt update K-e817ebbe --status outdated`.
 - If a newer fact replaces it, create the new item with
-  `--set 'supersedes=["K-00001"]'` (shown in the next section).
+  `--set 'supersedes=["K-e817ebbe"]'` (shown in the next section).
 
 Don't store opinions, guesses or generic advice as knowledge. A preference is
 not a fact; if it's a choice, it belongs in a decision.
@@ -373,17 +382,17 @@ costs**. Decisions start as `proposed`:
 
 ```console
 $ dikt add decision --title "Cache forecasts in Redis for 30 minutes" \
-    --tag caching --tag redis --based-on K-00001 \
+    --tag caching --tag redis --based-on K-e817ebbe \
     --context "Forecasts change hourly; API quota is 10k calls/day" \
     --options "No cache; in-process LRU; Redis" \
     --decision "Redis with a 30-minute TTL" \
     --consequences "Deployment needs Redis" \
     --revisit-when "API quota changes or traffic exceeds 5k requests/day"
-D-00001
+D-ea78b4cb
 ```
 
 `--based-on` links supporting knowledge, and the IDs must exist. You can
-revise a proposed decision freely with `dikt edit D-00001 --section Options --text ...`.
+revise a proposed decision freely with `dikt edit D-ea78b4cb --section Options --text ...`.
 
 ### Accepting
 
@@ -391,14 +400,14 @@ Accept only what the human actually approved. Acceptance requires all four
 rationale sections and sets the `decided` date:
 
 ```console
-$ dikt update D-00001 --status accepted
-D-00001
-$ dikt get D-00001 --fields status,decided,based_on
+$ dikt update D-ea78b4cb --status accepted
+D-ea78b4cb
+$ dikt get D-ea78b4cb --fields status,decided,based_on
 {
   "status": "accepted",
   "decided": "2026-11-20",
   "based_on": [
-    "K-00001"
+    "K-e817ebbe"
   ]
 }
 ```
@@ -406,16 +415,16 @@ $ dikt get D-00001 --fields status,decided,based_on
 From then on the rationale is **immutable**:
 
 ```console
-$ dikt edit D-00001 --section Decision --text "Use memcached"
+$ dikt edit D-ea78b4cb --section Decision --text "Use memcached"
 Error: Accepted rationale is immutable; create and supersede with a new decision
 ```
 
 Only the revisit fields and tags can still change:
 
 ```sh
-dikt update D-00001 --set revisit=2027-05-01      # review on/after this date
-dikt update D-00001 --set 'revisit_when="traffic exceeds 5k/day"'
-dikt update D-00001 --add-tag weather-api
+dikt update D-ea78b4cb --set revisit=2027-05-01      # review on/after this date
+dikt update D-ea78b4cb --set 'revisit_when="traffic exceeds 5k/day"'
+dikt update D-ea78b4cb --add-tag weather-api
 ```
 
 ### Review flags
@@ -426,16 +435,16 @@ when its evidence becomes outdated or superseded. Here the quota changes:
 ```console
 $ dikt add knowledge --title "Open-Meteo free tier now allows 5k calls per day" \
     --tag open-meteo --source "https://open-meteo.com/en/terms (read 2027-01-10)" \
-    --set 'supersedes=["K-00001"]'
-K-00002
+    --set 'supersedes=["K-e817ebbe"]'
+K-16c8cb1d
 
 $ dikt list --revisit-due
-D-00001 [accepted] Cache forecasts in Redis for 30 minutes
+D-ea78b4cb [accepted] Cache forecasts in Redis for 30 minutes
 
 $ dikt backlog && tail -3 dikt/Backlog.md
 ## Decisions to Revisit
 
-- D-00001 Cache forecasts in Redis for 30 minutes: superseded evidence K-00001 (by K-00002)
+- D-ea78b4cb Cache forecasts in Redis for 30 minutes: superseded evidence K-e817ebbe (by K-16c8cb1d)
 ```
 
 The flag **does not change** the decision; a human or agent has to review it.
@@ -449,14 +458,14 @@ Both stay on record, linked both ways:
 
 ```console
 $ dikt add decision --title "Cache forecasts in Redis for 60 minutes" --tag caching --tag redis \
-    --based-on K-00002 --status accepted --context "Quota halved to 5k/day" \
+    --based-on K-16c8cb1d --status accepted --context "Quota halved to 5k/day" \
     --options "Keep 30 min; 60 min" --decision "60-minute TTL" --consequences "Data up to an hour stale"
-D-00002
-$ dikt supersede D-00001 --by D-00002
-D-00002
+D-519ccede
+$ dikt supersede D-ea78b4cb --by D-519ccede
+D-519ccede
 $ dikt list --type decision
-D-00001 [superseded] Cache forecasts in Redis for 30 minutes
-D-00002 [accepted] Cache forecasts in Redis for 60 minutes
+D-ea78b4cb [superseded] Cache forecasts in Redis for 30 minutes
+D-519ccede [accepted] Cache forecasts in Redis for 60 minutes
 ```
 
 Use `rejected` for proposals that were turned down. The record of why is still valuable.
@@ -466,12 +475,14 @@ Use `rejected` for proposals that were turned down. The record of why is still v
 ## 9. Finding things
 
 ```console
-$ dikt list                                   # everything, 20 per page, ordered by ID
-D-00001 [superseded] Cache forecasts in Redis for 30 minutes
-D-00002 [accepted] Cache forecasts in Redis for 60 minutes
-I-00001 [promoted] Cache API responses
-K-00001 [active] Open-Meteo free tier allows 10k calls per day
-...
+$ dikt list                                   # everything, oldest first, 20 per page
+T-962f5dff [done] Add CSV export
+I-92990322 [promoted] Cache API responses
+T-459eaace [todo] Cache API responses
+K-e817ebbe [active] Open-Meteo free tier allows 10k calls per day
+D-ea78b4cb [superseded] Cache forecasts in Redis for 30 minutes
+K-16c8cb1d [active] Open-Meteo free tier now allows 5k calls per day
+D-519ccede [accepted] Cache forecasts in Redis for 60 minutes
 ```
 
 | Filter | Meaning |
@@ -482,8 +493,9 @@ K-00001 [active] Open-Meteo free tier allows 10k calls per day
 | `--tag caching` | Has this tag |
 | `--since 2026-11-01` | Updated on or after |
 | `--due 2026-11-30` | Has a due date on or before |
-| `--based-on K-00001` | Decisions using this evidence |
-| `--related D-00001` | Items linking to it (links, evidence, supersession, promotion) |
+| `--based-on K-e817ebbe` | Decisions using this evidence |
+| `--related D-ea78b4cb` | Items linking to it (links, evidence, supersession, promotion) |
+| `--author "Alex Morgan"` | Created by this author (exact match) |
 | `--revisit-due` | Accepted decisions needing review |
 | `--limit 50 --offset 20` | Paging; a "More results" hint appears on stderr |
 
@@ -493,7 +505,7 @@ Output shapes:
 $ dikt list --query redis --fields id,title,status
 [
   {
-    "id": "D-00001",
+    "id": "D-ea78b4cb",
     "title": "Cache forecasts in Redis for 30 minutes",
     "status": "superseded"
   },
@@ -501,11 +513,12 @@ $ dikt list --query redis --fields id,title,status
 ]
 $ dikt list --type task --json        # id/title/status as JSON
 $ dikt list --tag caching --full      # complete files
-$ dikt get D-00002 --full             # one item, everything
-$ dikt get D-00002 --json --full      # one item as JSON, body included
+$ dikt get D-519ccede --full             # one item, everything
+$ dikt get D-519ccede --json --full      # one item as JSON, body included
 ```
 
-There is no relevance ranking: results are sorted by ID. `list` only
+There is no relevance ranking: results are listed oldest first (IDs are
+hashes and carry no order). `list` only
 searches items, so use `grep` for `context/`, `guides/`, `procedures/` and so on.
 
 ---
@@ -539,16 +552,31 @@ A daily report looks like this:
 <!-- dikt:generated:start -->
 ## Tasks Completed
 
-- T-00001 Add CSV export: Exporter shipped with BOM; 4 tests added
+- T-962f5dff Add CSV export: Exporter shipped with BOM; 4 tests added
 
 ## Other Activity
 
-- T-00001 [created] Add CSV export
-- T-00001 [note] Excel needs a UTF-8 BOM to show non-ASCII city names
-- I-00001 [promoted] Promoted to T-00002
-...
+- T-962f5dff [created] Add CSV export
+- T-962f5dff [updated] {"fields": {"status": "in_progress"}}
+- T-962f5dff [updated] {"add_check": "Write exporter"}
+- T-962f5dff [updated] {"add_check": "Add tests"}
+- T-962f5dff [updated] {"check": 1}
+- T-962f5dff [note] Excel needs a UTF-8 BOM to show non-ASCII city names
+- I-92990322 [created] Cache API responses
+- T-459eaace [created] Cache API responses
+- I-92990322 [promoted] Promoted to T-459eaace
+- K-e817ebbe [created] Open-Meteo free tier allows 10k calls per day
+- D-ea78b4cb [created] Cache forecasts in Redis for 30 minutes
+- D-ea78b4cb [updated] {"fields": {"status": "accepted"}}
+- D-ea78b4cb [updated] {"fields": {"revisit": "2027-05-01"}}
+- K-16c8cb1d [created] Open-Meteo free tier now allows 5k calls per day
+- D-519ccede [created] Cache forecasts in Redis for 60 minutes
+- D-ea78b4cb [superseded] Replaced by D-519ccede
+- D-519ccede [supersedes] Replaces D-ea78b4cb
 <!-- dikt:generated:end -->
 ```
+
+Activity is listed in the order it happened.
 
 Write your own summary **under `## Summary`, outside the markers**.
 Regenerating replaces only the marked block, and weekly reports include your
@@ -601,6 +629,9 @@ entries only after you approve.
 | GitHub Copilot (VS Code) | `AGENTS.md`, `.github/skills/`, `.github/prompts/` | `/dikt-triage-inbox`, `/dikt-weekly-review` prompts |
 | Codex & other AGENTS.md readers | `AGENTS.md` | Ask: "follow dikt/procedures/weekly-review.md" |
 
+A complete, recorded example of two such chats (saving records in one, using
+them in the next) is in the [README](../README.md#example-two-agent-chats).
+
 ### Check that discovery works
 
 In a **fresh** chat, ask:
@@ -614,10 +645,10 @@ If it doesn't, the harness didn't load the instructions. Attach
 ### Example prompts
 
 - "Before designing the cache, check DIKT for related decisions and knowledge."
-- "Start T-00002 and log what you find."
+- "Start T-459eaace and log what you find."
 - "We verified the API limit: save it as knowledge with the docs URL as source."
 - "Propose a decision for the export format; don't accept it."
-- "I approve D-00003, accept it."
+- "I approve D-519ccede, accept it."
 - "Triage the inbox." (or `/dikt-triage-inbox`)
 - "Do the weekly review." (or `/dikt-weekly-review`)
 
@@ -657,14 +688,34 @@ don't land in the wrong project.
 
 - `dikt/` is ordinary project content: commit items, reports, tags and
   procedures with the work they describe.
-- **IDs come from the files already present.** Two clones creating items at
-  the same time can both create `T-00007`. If that happens, Git shows two
-  different files with the same ID; `dikt validate` reports
-  `Duplicate ID: T-00007; no copy selected`. Resolve it by re-creating one
-  item with `dikt add` (it gets a new ID), moving the content over, and
-  removing the duplicate file in the same commit. Pull before bulk-adding.
+- **Item IDs practically never collide between branches.** Each ID is a hash
+  (32 bits) that includes the creation time and author, so two people adding
+  "Update the README" on separate clones get different IDs and different
+  files. Here is that exact situation, merged with Git:
+
+  ```console
+  $ git pull --no-rebase              # Grace pulls after Ada pushed her task
+  Merge made by the 'ort' strategy.
+   dikt/tasks/T-9c7055c3-update-the-readme.md | 29 +++++++++++++++++++++++++++++
+   1 file changed, 29 insertions(+)
+  $ dikt validate
+  Valid: 2 items
+  ```
+
+  With dikt 0.1.0's sequential IDs, both clones had created `T-00001`: Git
+  reported `CONFLICT (add/add)` and `dikt validate` failed on the merged file.
+  Items created by 0.1.0 keep their IDs and remain valid next to the new ones.
+  If two items ever did get the same ID, `dikt validate` reports
+  `Duplicate ID` and neither copy is used until you re-create one.
+- `dikt list --author "Name"` shows who created what. The author comes from
+  `git config user.name`, so set it in each clone. Set `DIKT_AUTHOR` to
+  override it (for example in CI), or pass `--author` to `add`.
+- **Still conflicts, as with any shared file:** two people editing *the same
+  item*, both adding a tag at the same spot in `tags.yaml`, or both generating
+  the same day's report. Resolve these in Git as usual, and regenerate reports
+  after merging (`dikt report YYYY-MM-DD`).
 - The write lock (`dikt/.dikt-write.lock/`) only serializes processes on one machine.
-- Never delete items and never reuse IDs; use `cancelled`, `dropped`, `outdated`, `rejected` or `superseded`.
+- Never delete items; use `cancelled`, `dropped`, `outdated`, `rejected` or `superseded`.
 
 ---
 
@@ -675,7 +726,7 @@ them. That's deliberate:
 
 ```console
 $ dikt list
-Error: I-00001-x.md: expected YAML frontmatter
+Error: I-92990322-x.md: expected YAML frontmatter
 ```
 
 To look around anyway, use a **recovery read**. It skips invalid items (and
@@ -684,8 +735,10 @@ items that link to them), warns on stderr, and never modifies anything:
 ```console
 $ dikt list --skip-invalid
 Warning: recovery read enabled; results may be incomplete. No files are repaired. Run dikt validate for a strict check.
-Warning: Skipped ideas/I-00001-x.md: I-00001-x.md: expected YAML frontmatter
-D-00001 [superseded] Cache forecasts in Redis for 30 minutes
+Warning: Skipped ideas/I-92990322-x.md: I-92990322-x.md: expected YAML frontmatter
+T-962f5dff [done] Add CSV export
+I-92990322 [promoted] Cache API responses
+T-459eaace [todo] Cache API responses
 ...
 ```
 
@@ -718,6 +771,10 @@ uv run dikt validate
 uv run dikt init --refresh      # update managed docs and skills
 git diff                        # review what changed
 ```
+
+**From 0.1.0:** existing items keep their sequential IDs (`T-00001`) and
+need no migration; they simply have no `author`. New items get hash IDs and an
+author. Run `init --refresh` to update the agent instructions as well.
 
 `init --refresh` rewrites only dikt-owned files (`dikt/README.md`,
 `STRUCTURE.md`, `AGENTS.md`, `CLAUDE.md`, `.gitignore`, the skills and
@@ -762,6 +819,7 @@ delete `.claude/skills/dikt*`, `.github/skills/dikt*`,
 | Option | Applies to |
 |---|---|
 | `--description TEXT` | all |
+| `--author NAME` | all (default: `$DIKT_AUTHOR`, else `git config user.name`, else the OS user) |
 | `--tag TAG` (repeatable) | all |
 | `--status S` | all (decisions default to `proposed`) |
 | `--priority 1-4`, `--due YYYY-MM-DD` | task |
@@ -769,7 +827,7 @@ delete `.claude/skills/dikt*`, `.github/skills/dikt*`,
 | `--based-on K-ID` (repeatable) | decision |
 | `--context --options --decision --consequences` | decision |
 | `--revisit YYYY-MM-DD`, `--revisit-when TEXT` | decision |
-| `--set FIELD=VALUE` | any other metadata field (JSON values: `null`, `3`, `["K-00001"]`) |
+| `--set FIELD=VALUE` | any other metadata field (JSON values: `null`, `3`, `["K-e817ebbe"]`) |
 
 ### Item fields
 
@@ -777,6 +835,7 @@ delete `.claude/skills/dikt*`, `.github/skills/dikt*`,
 |---|---|---|
 | `schema_version`, `id`, `type`, `created`, `updated` | all | Managed by dikt, immutable |
 | `title`, `status`, `tags` | all | Title is one line |
+| `author` | all | Set on creation, immutable. Optional when reading, so items from dikt 0.1.0 (which had none) stay valid |
 | `links` | all | `items` holds DIKT IDs; `jira`, `mr`, `commits`, `confluence` hold free-form references (no integrations) |
 | `priority`, `due`, `checklist` | task | |
 | `promoted_to` | idea | Set by `promote` |
@@ -789,7 +848,7 @@ append-only, through `log` and automatic entries.
 
 ### Limits
 
-- Search is substring matching ordered by ID; there is no ranking or index.
+- Search is substring matching, listed oldest first; there is no ranking or index.
 - Multi-file writes roll back on ordinary errors but are not crash-atomic.
 - There is no delete command and no schema migration command.
 - Tag relevance is your (or your agent's) judgment; validation checks only

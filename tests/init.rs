@@ -135,5 +135,9 @@ fn cli_init_then_use_from_subdirectory() {
         &["add", "task", "--title", "First", "--tag", "dikt"],
     );
     assert_eq!(code, 0, "{err}");
-    assert_eq!(out.trim(), "T-00001");
+    let id = out.trim();
+    assert!(
+        id.len() == 10 && id.starts_with("T-") && id[2..].chars().all(|c| c.is_ascii_hexdigit()),
+        "{id}"
+    );
 }

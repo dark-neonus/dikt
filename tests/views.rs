@@ -1,4 +1,4 @@
-//! Port of the blueprint's tests/test_views.py.
+//! Reports, backlog and decision review flags.
 
 use std::fs;
 
@@ -44,7 +44,7 @@ fn daily_reports_are_saved_and_preserve_summary() {
     let path = store.root.join(report(&store, "today", None).unwrap());
     let text = fs::read_to_string(&path).unwrap();
     assert!(
-        text.contains("Tasks Completed\n\n- T-00001 Fix: Verified"),
+        text.contains(&format!("Tasks Completed\n\n- {} Fix: Verified", task.id())),
         "{text}"
     );
     fs::write(

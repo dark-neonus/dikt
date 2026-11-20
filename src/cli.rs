@@ -11,7 +11,10 @@ use serde_json::{Map, Value, json};
 use crate::bail;
 use crate::error::{Error, Result};
 use crate::init::{self, Agent};
-use crate::store::{Change, Item, Items, Store, discover_root, parse_date, prefix, require, today};
+use crate::store::{
+    Change, Item, Items, Store, created_micros, default_author, discover_root, parse_date, prefix,
+    require, today,
+};
 use crate::views::{backlog_text, report as generate_report, review_reasons};
 use crate::yaml::py_json;
 
@@ -70,6 +73,9 @@ enum Command {
         kind: String,
         #[arg(long)]
         title: String,
+        /// Author to record (default: $DIKT_AUTHOR, else `git config user.name`, else the OS user).
+        #[arg(long)]
+        author: Option<String>,
         #[arg(long, default_value = "")]
         description: String,
         #[arg(long)]
@@ -130,6 +136,9 @@ enum Command {
         /// Accepted decisions whose revisit date or evidence needs review.
         #[arg(long)]
         revisit_due: bool,
+        /// Created by this author (exact match).
+        #[arg(long)]
+        author: Option<String>,
         #[arg(long, default_value_t = 20, value_parser = clap::value_parser!(u64).range(1..))]
         limit: u64,
         #[arg(long, default_value_t = 0)]
@@ -329,12 +338,17 @@ fn execute(cli: Cli, io: &mut Io) -> Result<()> {
         let report = init::init(&path, &agents, refresh, command.as_deref())?;
         return io.line(report);
     }
-    let store = open_store(cli.root)?;
+    let mut store = open_store(cli.root)?;
+    if matches!(cli.command, Command::Add { .. } | Command::Promote { .. }) {
+        let author = default_author(&store.root);
+        store = store.with_author(author);
+    }
     match cli.command {
         Command::Init { .. } => unreachable!(),
         Command::Add {
             kind,
             title,
+            author,
             description,
             tag,
             source,
@@ -357,6 +371,7 @@ fn execute(cli: Cli, io: &mut Io) -> Result<()> {
                 "schema_version",
                 "created",
                 "updated",
+                "author",
                 "superseded_by",
                 "promoted_to",
             ];
@@ -364,9 +379,10 @@ fn execute(cli: Cli, io: &mut Io) -> Result<()> {
                 protected.push("supersedes");
             }
             if fields.keys().any(|key| protected.contains(&key.as_str())) {
-                bail!("Cannot supply identity/history fields");
+                bail!("Cannot supply identity/history fields (use --author to set the author)");
             }
-            let options_list: [(&str, Option<Value>); 8] = [
+            let options_list: [(&str, Option<Value>); 9] = [
+                ("author", author.map(Value::from)),
                 ("tags", (!tag.is_empty()).then(|| json!(tag))),
                 ("source", source.map(Value::from)),
                 ("status", status.map(Value::from)),
@@ -407,6 +423,7 @@ fn execute(cli: Cli, io: &mut Io) -> Result<()> {
             based_on,
             related,
             revisit_due,
+            author,
             limit,
             offset,
             output,
@@ -436,6 +453,9 @@ fn execute(cli: Cli, io: &mut Io) -> Result<()> {
                         && tag
                             .as_ref()
                             .is_none_or(|tag| item.list("tags").contains(tag))
+                        && author
+                            .as_ref()
+                            .is_none_or(|author| item.str("author") == author)
                         && since.as_ref().is_none_or(|since| {
                             item.str("updated").get(..10).unwrap_or("") >= since.as_str()
                         })
@@ -457,7 +477,8 @@ fn execute(cli: Cli, io: &mut Io) -> Result<()> {
                     words.iter().all(|word| text.contains(word.as_str()))
                 });
             }
-            matches.sort_by(|a, b| a.id().cmp(b.id()));
+            // Oldest first. IDs are hashes, so they carry no order of their own.
+            matches.sort_by(|a, b| (created_micros(a), a.id()).cmp(&(created_micros(b), b.id())));
             let (offset, limit) = (offset as usize, limit as usize);
             let page: Vec<&Item> = matches.iter().copied().skip(offset).take(limit).collect();
             emit(io, &page, &output, false)?;

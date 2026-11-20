@@ -1,4 +1,4 @@
-//! Port of the blueprint's tests/test_store.py.
+//! Store behaviour: validation, lifecycle, tag policy and transactional writes.
 
 use std::fs;
 
@@ -75,12 +75,12 @@ fn round_trip_and_stable_id_on_rename() {
     assert!(!original.exists());
     assert_eq!(
         store.load().unwrap().keys().collect::<Vec<_>>(),
-        ["T-00001"]
+        [item.id()]
     );
     assert!(
         store
             .root
-            .join("tasks/T-00001-fix-report-export.md")
+            .join(format!("tasks/{}-fix-report-export.md", item.id()))
             .exists()
     );
     assert!(
